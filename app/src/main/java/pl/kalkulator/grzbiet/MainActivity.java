@@ -2,6 +2,8 @@ package pl.kalkulator.grzbiet;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.res.Configuration;
+import android.view.View;
 import android.net.Uri;
 import android.os.Bundle;
 import android.webkit.JavascriptInterface;
@@ -12,6 +14,9 @@ import android.webkit.WebViewClient;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -38,7 +43,67 @@ public class MainActivity extends Activity {
         web.loadUrl("file:///android_asset/index.html");
     }
 
+    private final Object fileLock = new Object();
+
+    private File historyFile() {
+        return new File(getFilesDir(), "history.json");
+    }
+
     private class Bridge {
+        @JavascriptInterface
+        public boolean isSystemDark() {
+            int mode = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+            return mode == Configuration.UI_MODE_NIGHT_YES;
+        }
+
+        @JavascriptInterface
+        public void setBarsDark(boolean dark) {
+            runOnUiThread(() -> {
+                int bg = dark ? 0xFF11161C : 0xFFEEF1F4;
+                getWindow().setStatusBarColor(bg);
+                getWindow().setNavigationBarColor(bg);
+                View d = getWindow().getDecorView();
+                int flags = d.getSystemUiVisibility();
+                int light = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                d.setSystemUiVisibility(dark ? (flags & ~light) : (flags | light));
+                web.setBackgroundColor(bg);
+            });
+        }
+
+        @JavascriptInterface
+        public String loadData() {
+            synchronized (fileLock) {
+                File f = historyFile();
+                if (!f.exists()) return "";
+                try (FileInputStream in = new FileInputStream(f)) {
+                    byte[] buf = new byte[(int) f.length()];
+                    int off = 0;
+                    while (off < buf.length) {
+                        int n = in.read(buf, off, buf.length - off);
+                        if (n < 0) break;
+                        off += n;
+                    }
+                    return new String(buf, 0, off, StandardCharsets.UTF_8);
+                } catch (Exception e) {
+                    return "";
+                }
+            }
+        }
+
+        @JavascriptInterface
+        public boolean saveData(String json) {
+            synchronized (fileLock) {
+                File tmp = new File(getFilesDir(), "history.json.tmp");
+                try (FileOutputStream out = new FileOutputStream(tmp)) {
+                    out.write(json.getBytes(StandardCharsets.UTF_8));
+                    out.getFD().sync();
+                } catch (Exception e) {
+                    return false;
+                }
+                return tmp.renameTo(historyFile());
+            }
+        }
+
         @JavascriptInterface
         public void exportData(String json, String fileName) {
             runOnUiThread(() -> {
