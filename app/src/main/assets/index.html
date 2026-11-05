@@ -1,18 +1,24 @@
-<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kalkulator Grzbiet</title>
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kalkulator</title>
 <style>
-/* Layout: one narrow column — ввод сверху, итоги, затем список расчётов за выбранный день */
+/* Layout: одна узкая колонка — вид работы, ввод, итоги, расчёты за день; История отдельным экраном */
 :root{
   --bg:#eef1f4; --surface:#ffffff; --line:#d5dbe2; --fg:#16202b; --muted:#5d6b7a;
   --accent:#a3253a; --accent-fg:#ffffff; --accent-soft:#f6e3e6;
+  --g:#2f7d32; --g-fg:#ffffff; --y:#e3b505; --y-fg:#2a2000; --r:#b3263a; --r-fg:#ffffff;
+  --t1-bg:#e2f1e2; --t1-fg:#1f5e22; --t2-bg:#fbf0c8; --t2-fg:#6b5200; --t3-bg:#f8e1e4; --t3-fg:#8e1c2e;
   --f-body:"Roboto Condensed","Arial Narrow",system-ui,sans-serif;
   --f-num:"Roboto Mono",monospace;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#11161c; --surface:#1a2129; --line:#2c3642; --fg:#e7ecf1; --muted:#93a1b0;
-  --accent:#e0566b; --accent-fg:#14090b; --accent-soft:#3a1c22; color-scheme:dark}}
+  --accent:#e0566b; --accent-fg:#14090b; --accent-soft:#3a1c22;
+  --g:#5cb860; --g-fg:#08150a; --y:#f2c84b; --y-fg:#2a2000; --r:#e0566b; --r-fg:#14090b;
+  --t1-bg:#183a1b; --t1-fg:#a9e0ac; --t2-bg:#3d3310; --t2-fg:#f2d77a; --t3-bg:#3e1a20; --t3-fg:#f3a9b4; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#11161c; --surface:#1a2129; --line:#2c3642; --fg:#e7ecf1; --muted:#93a1b0;
-  --accent:#e0566b; --accent-fg:#14090b; --accent-soft:#3a1c22; color-scheme:dark}
+  --accent:#e0566b; --accent-fg:#14090b; --accent-soft:#3a1c22;
+  --g:#5cb860; --g-fg:#08150a; --y:#f2c84b; --y-fg:#2a2000; --r:#e0566b; --r-fg:#14090b;
+  --t1-bg:#183a1b; --t1-fg:#a9e0ac; --t2-bg:#3d3310; --t2-fg:#f2d77a; --t3-bg:#3e1a20; --t3-fg:#f3a9b4; color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:16px;line-height:1.4}
 .wrap{max-width:480px;margin:0 auto;padding-block:16px 40px;
@@ -22,11 +28,17 @@ h1{font-size:20px;font-weight:700;margin:0;letter-spacing:.01em}
 .lbl{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 .num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.view{display:flex;flex-direction:column;gap:16px}
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg)}
+.seg button{background:none;color:var(--muted);border-radius:0;padding:10px 4px;font-size:15px;font-weight:600}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
 .fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .field{display:flex;flex-direction:column;gap:6px;min-width:0}
 input{font:600 22px var(--f-num);width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
 input:focus{outline:2px solid var(--accent);outline-offset:1px}
-input[type=date]{font:500 16px var(--f-body);padding:8px 10px}
+input[type=date]{font:500 16px var(--f-body);padding:8px 10px;width:auto}
 .live{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .live div{display:flex;flex-direction:column;gap:2px}
 .live .v{font-size:26px;font-weight:600}
@@ -34,25 +46,32 @@ button{font:600 17px var(--f-body);border:0;border-radius:8px;padding:13px;curso
 .add{background:var(--accent);color:var(--accent-fg)}
 .add:disabled{opacity:.4;cursor:default}
 button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.hbtn{background:var(--surface);color:var(--fg);border:1px solid var(--line);font-size:15px;padding:8px 14px}
 .totals{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .tot{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
 .tot .v{font-size:24px;font-weight:600}
 .tot .s{font-size:13px;color:var(--muted)}
 .dayhead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-table{width:100%;border-collapse:collapse}
-th{text-align:right;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:0 6px 6px}
-th:first-child,td:first-child{text-align:left}
-td{text-align:right;padding:9px 6px;border-top:1px solid var(--line)}
-td.money{font-weight:600}
+.erow{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
+.erow .d{font-size:15px;color:var(--fg);min-width:0}
+.erow .m{font-weight:600;white-space:nowrap}
+.tag{font-size:12px;font-weight:600;padding:2px 7px;border-radius:6px;white-space:nowrap}
+.wrap[data-type="grzb"]{--accent:var(--g);--accent-fg:var(--g-fg)}
+.wrap[data-type="tryb"]{--accent:var(--y);--accent-fg:var(--y-fg)}
+.wrap[data-type="indyk"]{--accent:var(--r);--accent-fg:var(--r-fg)}
+.tag.grzb{background:var(--t1-bg);color:var(--t1-fg)}
+.tag.tryb{background:var(--t2-bg);color:var(--t2-fg)}
+.tag.indyk{background:var(--t3-bg);color:var(--t3-fg)}
+.sum{border-top:2px solid var(--fg);padding-top:10px;display:flex;flex-direction:column;gap:4px}
+.sum .r{display:flex;justify-content:space-between;gap:12px;font-size:15px;color:var(--muted)}
+.sum .r.big{color:var(--fg);font-size:17px;font-weight:700;margin-top:4px}
+.sum .sub{margin-top:8px}
 .del{background:none;color:var(--muted);font-size:14px;padding:4px 8px}
 .del.armed{background:var(--accent-soft);color:var(--accent)}
 .empty{color:var(--muted);font-size:15px;margin:0}
 .note{font-size:13px;color:var(--muted);margin:0}
-.hdr{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.view{display:flex;flex-direction:column;gap:16px}
-.hbtn{background:var(--surface);color:var(--fg);border:1px solid var(--line);font-size:15px;padding:8px 14px}
 .monthnav{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.mtitle{font-size:18px;font-weight:700;text-transform:capitalize}
+.mtitle{font-size:18px;font-weight:700}
 .nav{background:var(--bg);color:var(--fg);border:1px solid var(--line);font-size:20px;line-height:1;padding:8px 14px}
 .nav:disabled{opacity:.35;cursor:default}
 .hrow{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;background:none;color:var(--fg);border-top:1px solid var(--line);border-radius:0;padding:12px 4px;font-weight:500;text-align:left}
@@ -62,11 +81,11 @@ td.money{font-weight:600}
 .histtot .v{font-size:22px;font-weight:600}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 .io{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.io button{background:var(--bg);color:var(--fg);border:1px solid var(--line);font-size:15px;padding:11px}
+.io button{background:var(--surface);color:var(--fg);border:1px solid var(--line);font-size:15px;padding:11px}
 </style></head><body>
 
 <div class="wrap">
-  <div class="hdr"><h1>Kalkulator Grzbiet</h1><button class="hbtn" id="histBtn">История</button></div>
+  <div class="hdr"><h1>Kalkulator</h1><button class="hbtn" id="histBtn">История</button></div>
 
   <section class="view" id="histView" hidden aria-label="История">
     <div class="panel">
@@ -83,34 +102,37 @@ td.money{font-weight:600}
   </section>
 
   <div class="view" id="mainView">
+    <section class="panel" aria-label="Новый расчёт">
+      <div class="seg" role="group" aria-label="Вид работы">
+        <button id="t-grzb" data-type="grzb">Grzbietowanie</button>
+        <button id="t-tryb" data-type="tryb">Trybowanie</button>
+        <button id="t-indyk" data-type="indyk">Indyk</button>
+      </div>
+      <div class="fields">
+        <label class="field"><span class="lbl" id="l1">Cwiartka</span>
+          <input id="f1" inputmode="decimal" autocomplete="off"></label>
+        <label class="field"><span class="lbl" id="l2">Grzbiet</span>
+          <input id="f2" inputmode="decimal" autocomplete="off"></label>
+      </div>
+      <div class="live">
+        <div id="pctBox"><span class="lbl">Процент</span><span class="v num" id="pct">—</span></div>
+        <div><span class="lbl">Деньги</span><span class="v num" id="money">—</span></div>
+      </div>
+      <button class="add" id="add" disabled>Сохранить расчёт</button>
+    </section>
 
-  <section class="panel" aria-label="Новый расчёт">
-    <div class="fields">
-      <label class="field"><span class="lbl">Cwiartka</span>
-        <input id="c" inputmode="decimal" autocomplete="off" placeholder="150"></label>
-      <label class="field"><span class="lbl">Grzbiet</span>
-        <input id="g" inputmode="decimal" autocomplete="off" placeholder="24"></label>
+    <div class="totals">
+      <div class="tot"><span class="lbl">За день</span><span class="v num" id="tday">0,00 zł</span><span class="s" id="tdayn">0 расчётов</span></div>
+      <div class="tot"><span class="lbl" id="tmonl">За месяц</span><span class="v num" id="tmon">0,00 zł</span><span class="s" id="tmonn">0 дней</span></div>
     </div>
-    <div class="live">
-      <div><span class="lbl">Процент</span><span class="v num" id="pct">—</span></div>
-      <div><span class="lbl">Деньги</span><span class="v num" id="money">—</span></div>
-    </div>
-    <button class="add" id="add" disabled>Сохранить расчёт</button>
-  </section>
 
-  <div class="totals">
-    <div class="tot"><span class="lbl">За день</span><span class="v num" id="tday">0,00 zł</span><span class="s" id="tdayn">0 расчётов</span></div>
-    <div class="tot"><span class="lbl" id="tmonl">За месяц</span><span class="v num" id="tmon">0,00 zł</span><span class="s" id="tmonn">0 дней</span></div>
-  </div>
-
-  <section class="panel" aria-label="Расчёты за день">
-    <div class="dayhead">
-      <span class="lbl">Расчёты за день</span>
-      <input type="date" id="day">
-    </div>
-    <div id="list"></div>
-  </section>
-
+    <section class="panel" aria-label="Расчёты за день">
+      <div class="dayhead">
+        <span class="lbl">Расчёты за день</span>
+        <input type="date" id="day">
+      </div>
+      <div id="list"></div>
+    </section>
   </div>
 
   <p class="note" id="status">Загрузка…</p>
@@ -120,26 +142,79 @@ td.money{font-weight:600}
 (function(){
   const $=id=>document.getElementById(id);
   const fmt=n=>n.toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmtW=n=>n.toLocaleString("pl-PL",{minimumFractionDigits:0,maximumFractionDigits:2});
   const parse=s=>{s=String(s).trim().replace(/\s/g,"").replace(",",".");if(!s)return NaN;const n=Number(s);return isFinite(n)?n:NaN};
   const r2=x=>Math.round((x+Number.EPSILON)*100)/100;
-  function calc(c,g){const pct=r2(g/c*100);const price=r2((20-pct+17)/100);return{pct,money:r2(price*c)}}
+
+  const TYPES={
+    grzb:{name:"Grzbietowanie",short:"Grzbiet.",keys:["c","g"],labels:["Cwiartka","Grzbiet"],ph:["150","24"],
+      ok:v=>v[0]>0&&v[1]>=0,
+      calc:v=>{const pct=r2(v[1]/v[0]*100);const price=r2((20-pct+17)/100);return{pct,money:r2(price*v[0])}}},
+    tryb:{name:"Trybowanie",short:"Trybow.",keys:["noga","kosci"],labels:["Noga trybowana","Kosci"],ph:["120","10"],
+      ok:v=>v[0]>=0&&v[1]>=0&&(v[0]>0||v[1]>0),
+      calc:v=>({pct:null,money:r2(v[0]*0.5)})},
+    indyk:{name:"Indyk",short:"Indyk",keys:["udo","kosci"],labels:["Udo z indyka","Kosci"],ph:["80","15"],
+      ok:v=>v[0]>=0&&v[1]>=0&&(v[0]>0||v[1]>0),
+      calc:v=>({pct:null,money:r2((v[0]+v[1])*0.3)})}
+  };
+  const ORDER=["grzb","tryb","indyk"];
+  const typeOf=e=>TYPES[e.type]?e.type:"grzb";
+  const vals=e=>TYPES[typeOf(e)].keys.map(k=>Number(e[k])||0);
+  const calcE=e=>TYPES[typeOf(e)].calc(vals(e));
+
   const pad=n=>String(n).padStart(2,"0");
   const today=()=>{const d=new Date();return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())};
   const MONTHS=["январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"];
+  const MONTHS_NOM=["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
   function plural(n,a,b,c){const m10=n%10,m100=n%100;if(m10===1&&m100!==11)return a;if(m10>=2&&m10<=4&&(m100<10||m100>=20))return b;return c}
 
-  let entries=[]; // {id,date,c,g,pct,money,ts}
-  let store=null; // {add, remove}
+  let entries=[];
+  let store=null;
+  let cur="grzb";
+  try{const t=localStorage.getItem("kalk-type");if(TYPES[t])cur=t}catch(_){}
   $("day").value=today();
+
+  function setType(t){
+    cur=t;document.querySelector(".wrap").dataset.type=t;try{localStorage.setItem("kalk-type",t)}catch(_){}
+    ORDER.forEach(k=>$("t-"+k).setAttribute("aria-pressed",String(k===t)));
+    const T=TYPES[t];
+    $("l1").textContent=T.labels[0];$("l2").textContent=T.labels[1];
+    $("f1").placeholder=T.ph[0];$("f2").placeholder=T.ph[1];
+    $("f1").value="";$("f2").value="";
+    $("pctBox").style.visibility=t==="grzb"?"visible":"hidden";
+    live();
+  }
+  ORDER.forEach(k=>$("t-"+k).addEventListener("click",()=>{setType(k);$("f1").focus()}));
+
+  function readInputs(){
+    const a=$("f1").value.trim(),b=$("f2").value.trim();
+    const v=[a===""?(cur==="grzb"?NaN:0):parse(a),b===""?(cur==="grzb"?NaN:0):parse(b)];
+    return v;
+  }
+  function live(){
+    const v=readInputs();const T=TYPES[cur];
+    const ok=!isNaN(v[0])&&!isNaN(v[1])&&T.ok(v);
+    if(ok){const r=T.calc(v);$("pct").textContent=r.pct==null?"—":fmt(r.pct)+" %";$("money").textContent=fmt(r.money)+" zł"}
+    else{$("pct").textContent="—";$("money").textContent="—"}
+    $("add").disabled=!ok||!store;
+  }
+  $("f1").addEventListener("input",live);$("f2").addEventListener("input",live);
+
+  function describe(e){
+    const t=typeOf(e),T=TYPES[t],v=vals(e);
+    if(t==="grzb")return "Cwiartka "+fmtW(v[0])+" · Grzbiet "+fmtW(v[1])+" · "+fmt(calcE(e).pct)+"%";
+    if(t==="tryb")return "Noga "+fmtW(v[0])+" · Kosci "+fmtW(v[1]);
+    return "Udo "+fmtW(v[0])+" · Kosci "+fmtW(v[1]);
+  }
 
   function render(){
     const day=$("day").value||today();
     const month=day.slice(0,7);
-    const all=entries.map(e=>Object.assign({},e,calc(e.c,e.g)));
+    const all=entries.map(e=>Object.assign({},e,{type:typeOf(e)},calcE(e)));
     renderHist(all);
     const dayItems=all.filter(e=>e.date===day).sort((a,b)=>a.ts-b.ts);
     const monItems=all.filter(e=>e.date.slice(0,7)===month);
-    const sum=a=>a.reduce((s,e)=>s+e.money,0);
+    const sum=a=>r2(a.reduce((s,e)=>s+e.money,0));
     $("tday").textContent=fmt(sum(dayItems))+" zł";
     $("tdayn").textContent=dayItems.length+" "+plural(dayItems.length,"расчёт","расчёта","расчётов");
     const days=new Set(monItems.map(e=>e.date)).size;
@@ -147,39 +222,39 @@ td.money{font-weight:600}
     $("tmonl").textContent="За "+MONTHS[+month.slice(5)-1];
     $("tmonn").textContent=days+" "+plural(days,"день","дня","дней");
     const list=$("list");
-    if(!dayItems.length){list.innerHTML='<p class="empty">За этот день расчётов нет. Введите Cwiartka и Grzbiet выше и нажмите «Сохранить расчёт».</p>';return}
-    const t=document.createElement("table");
-    t.innerHTML='<thead><tr><th>№</th><th>Cwiartka</th><th>Grzbiet</th><th>%</th><th>Деньги</th><th></th></tr></thead>';
-    const tb=document.createElement("tbody");
+    if(!dayItems.length){list.innerHTML='<p class="empty">За этот день расчётов нет. Выберите вид работы, введите значения выше и нажмите «Сохранить расчёт».</p>';return}
+    const frag=document.createDocumentFragment();
     dayItems.forEach((e,i)=>{
-      const tr=document.createElement("tr");
-      [String(i+1),fmt(e.c),fmt(e.g),fmt(e.pct),fmt(e.money)+" zł"].forEach((v,k)=>{
-        const td=document.createElement("td");td.textContent=v;td.className="num"+(k===4?" money":"");tr.appendChild(td)});
-      const td=document.createElement("td");const b=document.createElement("button");
-      b.className="del";b.textContent="✕";b.setAttribute("aria-label","Удалить расчёт "+(i+1));
+      const row=document.createElement("div");row.className="erow";
+      const tag=document.createElement("span");tag.className="tag "+e.type;tag.textContent=TYPES[e.type].short;
+      const d=document.createElement("span");d.className="d num";d.textContent=describe(e);
+      const m=document.createElement("span");m.className="m num";m.textContent=fmt(e.money)+" zł";
+      const b=document.createElement("button");b.className="del";b.textContent="✕";b.setAttribute("aria-label","Удалить расчёт "+(i+1));
       b.addEventListener("click",()=>{
         if(!b.classList.contains("armed")){b.classList.add("armed");b.textContent="Удалить?";setTimeout(()=>{b.classList.remove("armed");b.textContent="✕"},3000);return}
         store&&store.remove(e.id);
       });
-      td.appendChild(b);tr.appendChild(td);tb.appendChild(tr);
+      row.append(tag,d,m,b);frag.appendChild(row);
     });
-    t.appendChild(tb);
-    const box=document.createElement("div");box.style.overflowX="auto";box.appendChild(t);
-    list.replaceChildren(box);
+    const s=document.createElement("div");s.className="sum";
+    const line=(label,val,cls)=>{const r=document.createElement("div");r.className="r"+(cls?" "+cls:"");const a=document.createElement("span");a.textContent=label;const v=document.createElement("span");v.className="num";v.textContent=val;r.append(a,v);s.appendChild(r)};
+    const present=ORDER.filter(t=>dayItems.some(e=>e.type===t));
+    if(present.length>1)present.forEach(t=>line(TYPES[t].name,fmt(sum(dayItems.filter(e=>e.type===t)))+" zł"));
+    line("Итого за день",fmt(sum(dayItems))+" zł","big");
+    const wl=document.createElement("div");wl.className="lbl sub";wl.textContent="Вес за день";s.appendChild(wl);
+    present.forEach(t=>{
+      const T=TYPES[t],items=dayItems.filter(e=>e.type===t);
+      T.keys.forEach((k,i)=>{
+        const tot=r2(items.reduce((a,e)=>a+(Number(e[k])||0),0));
+        const label=T.labels[i]+(k==="kosci"?" ("+T.name+")":"");
+        line(label,fmtW(tot));
+      });
+    });
+    frag.appendChild(s);
+    list.replaceChildren(frag);
   }
-
-  function live(){
-    const c=parse($("c").value),g=parse($("g").value);
-    const ok=c>0&&g>=0;
-    if(ok){const r=calc(c,g);$("pct").textContent=fmt(r.pct)+" %";$("money").textContent=fmt(r.money)+" zł"}
-    else{$("pct").textContent="—";$("money").textContent="—"}
-    $("add").disabled=!ok||!store;
-  }
-  $("c").addEventListener("input",live);$("g").addEventListener("input",live);
   $("day").addEventListener("change",render);
 
-  // История по дням
-  const MONTHS_NOM=["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
   let histMonth=today().slice(0,7);
   const shiftMonth=(ym,d)=>{let y=+ym.slice(0,4),m=+ym.slice(5)+d;if(m<1){m=12;y--}if(m>12){m=1;y++}return y+"-"+pad(m)};
   function renderHist(all){
@@ -199,14 +274,14 @@ td.money{font-weight:600}
         const [y,m,dd]=d.split("-").map(Number);
         const name=document.createElement("span");
         name.textContent=new Date(y,m-1,dd).toLocaleDateString("ru-RU",{day:"numeric",month:"long",weekday:"short"});
-        const v=document.createElement("span");v.className="num";v.textContent=fmt(byDay[d])+" zł";
+        const v=document.createElement("span");v.className="num";v.textContent=fmt(r2(byDay[d]))+" zł";
         b.append(name,v);
         b.addEventListener("click",()=>{$("day").value=d;showMain();render();$("list").scrollIntoView({block:"start"})});
         frag.appendChild(b);
       });
       list.replaceChildren(frag);
     }
-    $("histTot").textContent=fmt(total)+" zł";
+    $("histTot").textContent=fmt(r2(total))+" zł";
   }
   function showMain(){$("histView").hidden=true;$("mainView").hidden=false;$("histBtn").textContent="История"}
   function showHist(){histMonth=($("day").value||today()).slice(0,7);$("mainView").hidden=true;$("histView").hidden=false;$("histBtn").textContent="Назад";render()}
@@ -215,16 +290,17 @@ td.money{font-weight:600}
   $("nextM").addEventListener("click",()=>{histMonth=shiftMonth(histMonth,1);render()});
 
   $("add").addEventListener("click",async()=>{
-    const c=parse($("c").value),g=parse($("g").value);
-    if(!(c>0&&g>=0)||!store)return;
-    const r=calc(c,g);
-    const e={date:$("day").value||today(),c,g,pct:r.pct,money:r.money,ts:Date.now()};
+    const v=readInputs();const T=TYPES[cur];
+    if(isNaN(v[0])||isNaN(v[1])||!T.ok(v)||!store)return;
+    const e={type:cur,date:$("day").value||today(),ts:Date.now()};
+    T.keys.forEach((k,i)=>e[k]=v[i]);
+    e.money=T.calc(v).money;
     $("add").disabled=true;
-    try{await store.add(e);$("c").value="";$("g").value="";live();$("c").focus()}
+    try{await store.add(e);$("f1").value="";$("f2").value="";live();$("f1").focus()}
     catch(err){$("status").textContent="Не удалось сохранить: "+(err&&err.message||"ошибка")+". Попробуйте ещё раз.";live()}
   });
 
-  // Хранение в телефоне
+  setType(cur);
   const KEY="kalk-grzbiet-v1";
   try{entries=JSON.parse(localStorage.getItem(KEY)||"[]")}catch(_){entries=[]}
   const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(entries))}catch(_){}};
@@ -233,10 +309,11 @@ td.money{font-weight:600}
     remove:async id=>{entries=entries.filter(x=>x.id!==id);save();render()}
   };
   const note=t=>{$("status").textContent=t};
-
+  const FIELDS=["c","g","noga","udo","kosci"];
   $("exportBtn").addEventListener("click",()=>{
     if(!entries.length){note("История пуста, выгружать нечего.");return}
-    const data=JSON.stringify({app:"kalkulator-grzbiet",version:1,entries:entries.map(e=>({date:e.date,c:e.c,g:e.g,ts:e.ts}))},null,1);
+    const out=entries.map(e=>{const o={type:typeOf(e),date:e.date,ts:e.ts};FIELDS.forEach(k=>{if(e[k]!=null)o[k]=e[k]});return o});
+    const data=JSON.stringify({app:"kalkulator-grzbiet",version:2,entries:out},null,1);
     if(window.Android&&Android.exportData){Android.exportData(data,"kalkulator-"+today()+".json")}
     else note("Выгрузка работает только в приложении.");
   });
@@ -244,24 +321,28 @@ td.money{font-weight:600}
     if(window.Android&&Android.importData){Android.importData()}
     else note("Загрузка работает только в приложении.");
   });
+  const keyOf=e=>[typeOf(e),e.ts].concat(TYPES[typeOf(e)].keys.map(k=>Number(e[k])||0)).join("|");
   window.onImport=function(text){
     let list;
     try{const j=JSON.parse(text);list=Array.isArray(j)?j:j.entries}catch(_){list=null}
     if(!Array.isArray(list)){note("Этот файл не подходит. Выберите файл, сохранённый кнопкой «Выгрузить в файл».");return}
-    const have=new Set(entries.map(e=>e.ts+"|"+e.c+"|"+e.g));
+    const have=new Set(entries.map(keyOf));
     let added=0;
     list.forEach(x=>{
-      const c=Number(x.c),g=Number(x.g),ts=Number(x.ts)||Date.now();
-      if(!(c>0&&g>=0)||!/^\d{4}-\d{2}-\d{2}$/.test(String(x.date)))return;
-      const k=ts+"|"+c+"|"+g; if(have.has(k))return; have.add(k);
-      entries.push({id:String(ts)+Math.random().toString(36).slice(2,6),date:String(x.date),c,g,ts});added++;
+      if(!x||!/^\d{4}-\d{2}-\d{2}$/.test(String(x.date)))return;
+      const t=TYPES[x.type]?x.type:"grzb";
+      const e={type:t,date:String(x.date),ts:Number(x.ts)||Date.now()};
+      TYPES[t].keys.forEach(k=>e[k]=Number(x[k])||0);
+      if(!TYPES[t].ok(vals(e)))return;
+      const k=keyOf(e);if(have.has(k))return;have.add(k);
+      e.id=String(e.ts)+Math.random().toString(36).slice(2,6);
+      entries.push(e);added++;
     });
     save();render();
     note(added?"Загружено расчётов: "+added+".":"Новых расчётов в файле нет, всё уже есть в истории.");
   };
   window.onExportDone=function(ok){note(ok?"История сохранена в файл.":"Не удалось сохранить файл.")};
   window.androidBack=function(){if(!$("histView").hidden){showMain();return true}return false};
-
   note("");
   render();live();
 })();
