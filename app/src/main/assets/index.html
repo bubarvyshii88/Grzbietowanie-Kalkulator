@@ -1,0 +1,268 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kalkulator Grzbiet</title>
+<style>
+/* Layout: one narrow column — ввод сверху, итоги, затем список расчётов за выбранный день */
+:root{
+  --bg:#eef1f4; --surface:#ffffff; --line:#d5dbe2; --fg:#16202b; --muted:#5d6b7a;
+  --accent:#a3253a; --accent-fg:#ffffff; --accent-soft:#f6e3e6;
+  --f-body:"Roboto Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-num:"Roboto Mono",monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#11161c; --surface:#1a2129; --line:#2c3642; --fg:#e7ecf1; --muted:#93a1b0;
+  --accent:#e0566b; --accent-fg:#14090b; --accent-soft:#3a1c22; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11161c; --surface:#1a2129; --line:#2c3642; --fg:#e7ecf1; --muted:#93a1b0;
+  --accent:#e0566b; --accent-fg:#14090b; --accent-soft:#3a1c22; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:16px;line-height:1.4}
+.wrap{max-width:480px;margin:0 auto;padding-block:16px 40px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:16px}
+h1{font-size:20px;font-weight:700;margin:0;letter-spacing:.01em}
+.lbl{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+input{font:600 22px var(--f-num);width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+input:focus{outline:2px solid var(--accent);outline-offset:1px}
+input[type=date]{font:500 16px var(--f-body);padding:8px 10px}
+.live{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.live div{display:flex;flex-direction:column;gap:2px}
+.live .v{font-size:26px;font-weight:600}
+button{font:600 17px var(--f-body);border:0;border-radius:8px;padding:13px;cursor:pointer}
+.add{background:var(--accent);color:var(--accent-fg)}
+.add:disabled{opacity:.4;cursor:default}
+button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.totals{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tot{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tot .v{font-size:24px;font-weight:600}
+.tot .s{font-size:13px;color:var(--muted)}
+.dayhead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+table{width:100%;border-collapse:collapse}
+th{text-align:right;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:0 6px 6px}
+th:first-child,td:first-child{text-align:left}
+td{text-align:right;padding:9px 6px;border-top:1px solid var(--line)}
+td.money{font-weight:600}
+.del{background:none;color:var(--muted);font-size:14px;padding:4px 8px}
+.del.armed{background:var(--accent-soft);color:var(--accent)}
+.empty{color:var(--muted);font-size:15px;margin:0}
+.note{font-size:13px;color:var(--muted);margin:0}
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.view{display:flex;flex-direction:column;gap:16px}
+.hbtn{background:var(--surface);color:var(--fg);border:1px solid var(--line);font-size:15px;padding:8px 14px}
+.monthnav{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.mtitle{font-size:18px;font-weight:700;text-transform:capitalize}
+.nav{background:var(--bg);color:var(--fg);border:1px solid var(--line);font-size:20px;line-height:1;padding:8px 14px}
+.nav:disabled{opacity:.35;cursor:default}
+.hrow{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;background:none;color:var(--fg);border-top:1px solid var(--line);border-radius:0;padding:12px 4px;font-weight:500;text-align:left}
+.hrow:hover{background:var(--bg)}
+.hrow .num{font-weight:600}
+.histtot{display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-top:2px solid var(--fg);padding-top:12px}
+.histtot .v{font-size:22px;font-weight:600}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.io{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.io button{background:var(--bg);color:var(--fg);border:1px solid var(--line);font-size:15px;padding:11px}
+</style></head><body>
+
+<div class="wrap">
+  <div class="hdr"><h1>Kalkulator Grzbiet</h1><button class="hbtn" id="histBtn">История</button></div>
+
+  <section class="view" id="histView" hidden aria-label="История">
+    <div class="panel">
+      <div class="monthnav">
+        <button class="nav" id="prevM" aria-label="Предыдущий месяц">‹</button>
+        <span class="mtitle" id="histM"></span>
+        <button class="nav" id="nextM" aria-label="Следующий месяц">›</button>
+      </div>
+      <div id="histList"></div>
+      <div class="histtot"><span class="lbl">Итог за месяц</span><span class="v num" id="histTot">0,00 zł</span></div>
+    </div>
+    <div class="io"><button id="exportBtn">Выгрузить в файл</button><button id="importBtn">Загрузить из файла</button></div>
+    <p class="note">Выгрузка сохраняет всю историю в файл. Из него можно восстановить расчёты, например на новом телефоне.</p>
+  </section>
+
+  <div class="view" id="mainView">
+
+  <section class="panel" aria-label="Новый расчёт">
+    <div class="fields">
+      <label class="field"><span class="lbl">Cwiartka</span>
+        <input id="c" inputmode="decimal" autocomplete="off" placeholder="150"></label>
+      <label class="field"><span class="lbl">Grzbiet</span>
+        <input id="g" inputmode="decimal" autocomplete="off" placeholder="24"></label>
+    </div>
+    <div class="live">
+      <div><span class="lbl">Процент</span><span class="v num" id="pct">—</span></div>
+      <div><span class="lbl">Деньги</span><span class="v num" id="money">—</span></div>
+    </div>
+    <button class="add" id="add" disabled>Сохранить расчёт</button>
+  </section>
+
+  <div class="totals">
+    <div class="tot"><span class="lbl">За день</span><span class="v num" id="tday">0,00 zł</span><span class="s" id="tdayn">0 расчётов</span></div>
+    <div class="tot"><span class="lbl" id="tmonl">За месяц</span><span class="v num" id="tmon">0,00 zł</span><span class="s" id="tmonn">0 дней</span></div>
+  </div>
+
+  <section class="panel" aria-label="Расчёты за день">
+    <div class="dayhead">
+      <span class="lbl">Расчёты за день</span>
+      <input type="date" id="day">
+    </div>
+    <div id="list"></div>
+  </section>
+
+  </div>
+
+  <p class="note" id="status">Загрузка…</p>
+</div>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const fmt=n=>n.toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const parse=s=>{s=String(s).trim().replace(/\s/g,"").replace(",",".");if(!s)return NaN;const n=Number(s);return isFinite(n)?n:NaN};
+  const r2=x=>Math.round((x+Number.EPSILON)*100)/100;
+  function calc(c,g){const pct=r2(g/c*100);const price=r2((20-pct+17)/100);return{pct,money:r2(price*c)}}
+  const pad=n=>String(n).padStart(2,"0");
+  const today=()=>{const d=new Date();return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())};
+  const MONTHS=["январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"];
+  function plural(n,a,b,c){const m10=n%10,m100=n%100;if(m10===1&&m100!==11)return a;if(m10>=2&&m10<=4&&(m100<10||m100>=20))return b;return c}
+
+  let entries=[]; // {id,date,c,g,pct,money,ts}
+  let store=null; // {add, remove}
+  $("day").value=today();
+
+  function render(){
+    const day=$("day").value||today();
+    const month=day.slice(0,7);
+    const all=entries.map(e=>Object.assign({},e,calc(e.c,e.g)));
+    renderHist(all);
+    const dayItems=all.filter(e=>e.date===day).sort((a,b)=>a.ts-b.ts);
+    const monItems=all.filter(e=>e.date.slice(0,7)===month);
+    const sum=a=>a.reduce((s,e)=>s+e.money,0);
+    $("tday").textContent=fmt(sum(dayItems))+" zł";
+    $("tdayn").textContent=dayItems.length+" "+plural(dayItems.length,"расчёт","расчёта","расчётов");
+    const days=new Set(monItems.map(e=>e.date)).size;
+    $("tmon").textContent=fmt(sum(monItems))+" zł";
+    $("tmonl").textContent="За "+MONTHS[+month.slice(5)-1];
+    $("tmonn").textContent=days+" "+plural(days,"день","дня","дней");
+    const list=$("list");
+    if(!dayItems.length){list.innerHTML='<p class="empty">За этот день расчётов нет. Введите Cwiartka и Grzbiet выше и нажмите «Сохранить расчёт».</p>';return}
+    const t=document.createElement("table");
+    t.innerHTML='<thead><tr><th>№</th><th>Cwiartka</th><th>Grzbiet</th><th>%</th><th>Деньги</th><th></th></tr></thead>';
+    const tb=document.createElement("tbody");
+    dayItems.forEach((e,i)=>{
+      const tr=document.createElement("tr");
+      [String(i+1),fmt(e.c),fmt(e.g),fmt(e.pct),fmt(e.money)+" zł"].forEach((v,k)=>{
+        const td=document.createElement("td");td.textContent=v;td.className="num"+(k===4?" money":"");tr.appendChild(td)});
+      const td=document.createElement("td");const b=document.createElement("button");
+      b.className="del";b.textContent="✕";b.setAttribute("aria-label","Удалить расчёт "+(i+1));
+      b.addEventListener("click",()=>{
+        if(!b.classList.contains("armed")){b.classList.add("armed");b.textContent="Удалить?";setTimeout(()=>{b.classList.remove("armed");b.textContent="✕"},3000);return}
+        store&&store.remove(e.id);
+      });
+      td.appendChild(b);tr.appendChild(td);tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+    const box=document.createElement("div");box.style.overflowX="auto";box.appendChild(t);
+    list.replaceChildren(box);
+  }
+
+  function live(){
+    const c=parse($("c").value),g=parse($("g").value);
+    const ok=c>0&&g>=0;
+    if(ok){const r=calc(c,g);$("pct").textContent=fmt(r.pct)+" %";$("money").textContent=fmt(r.money)+" zł"}
+    else{$("pct").textContent="—";$("money").textContent="—"}
+    $("add").disabled=!ok||!store;
+  }
+  $("c").addEventListener("input",live);$("g").addEventListener("input",live);
+  $("day").addEventListener("change",render);
+
+  // История по дням
+  const MONTHS_NOM=["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+  let histMonth=today().slice(0,7);
+  const shiftMonth=(ym,d)=>{let y=+ym.slice(0,4),m=+ym.slice(5)+d;if(m<1){m=12;y--}if(m>12){m=1;y++}return y+"-"+pad(m)};
+  function renderHist(all){
+    $("histM").textContent=MONTHS_NOM[+histMonth.slice(5)-1]+" "+histMonth.slice(0,4);
+    $("nextM").disabled=histMonth>=today().slice(0,7);
+    const byDay={};
+    all.filter(e=>e.date.slice(0,7)===histMonth).forEach(e=>{byDay[e.date]=(byDay[e.date]||0)+e.money});
+    const days=Object.keys(byDay).sort().reverse();
+    let total=0;
+    const list=$("histList");
+    if(!days.length){list.innerHTML='<p class="empty">В этом месяце расчётов нет.</p>'}
+    else{
+      const frag=document.createDocumentFragment();
+      days.forEach(d=>{
+        total+=byDay[d];
+        const b=document.createElement("button");b.className="hrow";
+        const [y,m,dd]=d.split("-").map(Number);
+        const name=document.createElement("span");
+        name.textContent=new Date(y,m-1,dd).toLocaleDateString("ru-RU",{day:"numeric",month:"long",weekday:"short"});
+        const v=document.createElement("span");v.className="num";v.textContent=fmt(byDay[d])+" zł";
+        b.append(name,v);
+        b.addEventListener("click",()=>{$("day").value=d;showMain();render();$("list").scrollIntoView({block:"start"})});
+        frag.appendChild(b);
+      });
+      list.replaceChildren(frag);
+    }
+    $("histTot").textContent=fmt(total)+" zł";
+  }
+  function showMain(){$("histView").hidden=true;$("mainView").hidden=false;$("histBtn").textContent="История"}
+  function showHist(){histMonth=($("day").value||today()).slice(0,7);$("mainView").hidden=true;$("histView").hidden=false;$("histBtn").textContent="Назад";render()}
+  $("histBtn").addEventListener("click",()=>{$("histView").hidden?showHist():showMain()});
+  $("prevM").addEventListener("click",()=>{histMonth=shiftMonth(histMonth,-1);render()});
+  $("nextM").addEventListener("click",()=>{histMonth=shiftMonth(histMonth,1);render()});
+
+  $("add").addEventListener("click",async()=>{
+    const c=parse($("c").value),g=parse($("g").value);
+    if(!(c>0&&g>=0)||!store)return;
+    const r=calc(c,g);
+    const e={date:$("day").value||today(),c,g,pct:r.pct,money:r.money,ts:Date.now()};
+    $("add").disabled=true;
+    try{await store.add(e);$("c").value="";$("g").value="";live();$("c").focus()}
+    catch(err){$("status").textContent="Не удалось сохранить: "+(err&&err.message||"ошибка")+". Попробуйте ещё раз.";live()}
+  });
+
+  // Хранение в телефоне
+  const KEY="kalk-grzbiet-v1";
+  try{entries=JSON.parse(localStorage.getItem(KEY)||"[]")}catch(_){entries=[]}
+  const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(entries))}catch(_){}};
+  store={
+    add:async e=>{e.id=String(e.ts)+Math.random().toString(36).slice(2,6);entries.push(e);save();render()},
+    remove:async id=>{entries=entries.filter(x=>x.id!==id);save();render()}
+  };
+  const note=t=>{$("status").textContent=t};
+
+  $("exportBtn").addEventListener("click",()=>{
+    if(!entries.length){note("История пуста, выгружать нечего.");return}
+    const data=JSON.stringify({app:"kalkulator-grzbiet",version:1,entries:entries.map(e=>({date:e.date,c:e.c,g:e.g,ts:e.ts}))},null,1);
+    if(window.Android&&Android.exportData){Android.exportData(data,"kalkulator-"+today()+".json")}
+    else note("Выгрузка работает только в приложении.");
+  });
+  $("importBtn").addEventListener("click",()=>{
+    if(window.Android&&Android.importData){Android.importData()}
+    else note("Загрузка работает только в приложении.");
+  });
+  window.onImport=function(text){
+    let list;
+    try{const j=JSON.parse(text);list=Array.isArray(j)?j:j.entries}catch(_){list=null}
+    if(!Array.isArray(list)){note("Этот файл не подходит. Выберите файл, сохранённый кнопкой «Выгрузить в файл».");return}
+    const have=new Set(entries.map(e=>e.ts+"|"+e.c+"|"+e.g));
+    let added=0;
+    list.forEach(x=>{
+      const c=Number(x.c),g=Number(x.g),ts=Number(x.ts)||Date.now();
+      if(!(c>0&&g>=0)||!/^\d{4}-\d{2}-\d{2}$/.test(String(x.date)))return;
+      const k=ts+"|"+c+"|"+g; if(have.has(k))return; have.add(k);
+      entries.push({id:String(ts)+Math.random().toString(36).slice(2,6),date:String(x.date),c,g,ts});added++;
+    });
+    save();render();
+    note(added?"Загружено расчётов: "+added+".":"Новых расчётов в файле нет, всё уже есть в истории.");
+  };
+  window.onExportDone=function(ok){note(ok?"История сохранена в файл.":"Не удалось сохранить файл.")};
+  window.androidBack=function(){if(!$("histView").hidden){showMain();return true}return false};
+
+  note("");
+  render();live();
+})();
+</script></body></html>

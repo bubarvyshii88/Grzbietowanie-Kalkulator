@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- корпус калькулятора -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M38,30h32a4,4 0,0 1,4 4v40a4,4 0,0 1,-4 4h-32a4,4 0,0 1,-4 -4v-40a4,4 0,0 1,4 -4z" />
+    <!-- экран -->
+    <path android:fillColor="#A3253A" android:pathData="M40,36h28v10h-28z" />
+    <!-- кнопки -->
+    <path android:fillColor="#A3253A"
+        android:pathData="M40,51h7v7h-7zM50.5,51h7v7h-7zM61,51h7v7h-7zM40,62h7v7h-7zM50.5,62h7v7h-7zM61,62h7v7h-7z" />
+</vector>
