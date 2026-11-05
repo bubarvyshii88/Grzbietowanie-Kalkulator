@@ -85,7 +85,7 @@ button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
 </style></head><body>
 
 <div class="wrap">
-  <div class="hdr"><h1>Kalkulator</h1><button class="hbtn" id="histBtn">История</button></div>
+  <div class="hdr"><h1>Kalkulator</h1><div style="display:flex;gap:8px"><button class="hbtn" id="themeBtn" aria-label="Тёмная тема">☾</button><button class="hbtn" id="histBtn">История</button></div></div>
 
   <section class="view" id="histView" hidden aria-label="История">
     <div class="panel">
@@ -179,7 +179,7 @@ button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
     ORDER.forEach(k=>$("t-"+k).setAttribute("aria-pressed",String(k===t)));
     const T=TYPES[t];
     $("l1").textContent=T.labels[0];$("l2").textContent=T.labels[1];
-    $("f1").placeholder=T.ph[0];$("f2").placeholder=T.ph[1];
+    $("f1").placeholder="";$("f2").placeholder="";
     $("f1").value="";$("f2").value="";
     $("pctBox").style.visibility=t==="grzb"?"visible":"hidden";
     live();
@@ -300,15 +300,38 @@ button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
     catch(err){$("status").textContent="Не удалось сохранить: "+(err&&err.message||"ошибка")+". Попробуйте ещё раз.";live()}
   });
 
+  const THEME_KEY="kalk-theme";
+  function sysDark(){try{if(window.Android&&Android.isSystemDark)return !!Android.isSystemDark()}catch(_){}try{return matchMedia("(prefers-color-scheme: dark)").matches}catch(_){return false}}
+  let theme=null;try{theme=localStorage.getItem(THEME_KEY)}catch(_){}
+  function applyTheme(){
+    const dark=theme?theme==="dark":sysDark();
+    document.documentElement.setAttribute("data-theme",dark?"dark":"light");
+    $("themeBtn").textContent=dark?"☀":"☾";
+    $("themeBtn").setAttribute("aria-label",dark?"Светлая тема":"Тёмная тема");
+    try{if(window.Android&&Android.setBarsDark)Android.setBarsDark(dark)}catch(_){}
+  }
+  $("themeBtn").addEventListener("click",()=>{
+    theme=document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark";
+    try{localStorage.setItem(THEME_KEY,theme)}catch(_){}
+    applyTheme();
+  });
+  applyTheme();
   setType(cur);
+  const note=t=>{$("status").textContent=t};
   const KEY="kalk-grzbiet-v1";
-  try{entries=JSON.parse(localStorage.getItem(KEY)||"[]")}catch(_){entries=[]}
-  const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(entries))}catch(_){}};
+  const NATIVE=!!(window.Android&&Android.loadData&&Android.saveData);
+  let raw="";
+  if(NATIVE){try{raw=Android.loadData()||""}catch(_){raw=""}}
+  if(!raw){try{raw=localStorage.getItem(KEY)||""}catch(_){raw=""}}
+  try{entries=JSON.parse(raw||"[]");if(!Array.isArray(entries))entries=[]}catch(_){entries=[]}
+  const save=()=>{const t=JSON.stringify(entries);
+    if(NATIVE){try{if(!Android.saveData(t))note("Не удалось записать историю в память телефона.")}catch(_){}}
+    try{localStorage.setItem(KEY,t)}catch(_){}};
+  if(NATIVE&&entries.length&&!Android.loadData())save();
   store={
     add:async e=>{e.id=String(e.ts)+Math.random().toString(36).slice(2,6);entries.push(e);save();render()},
     remove:async id=>{entries=entries.filter(x=>x.id!==id);save();render()}
   };
-  const note=t=>{$("status").textContent=t};
   const FIELDS=["c","g","noga","udo","kosci"];
   $("exportBtn").addEventListener("click",()=>{
     if(!entries.length){note("История пуста, выгружать нечего.");return}
