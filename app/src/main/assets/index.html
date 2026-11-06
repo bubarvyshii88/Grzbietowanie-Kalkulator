@@ -151,7 +151,7 @@ button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
   const TYPES={
     grzb:{name:"Grzbietowanie",short:"Grzbiet.",keys:["c","g"],labels:["Cwiartka","Grzbiet"],ph:["150","24"],
       ok:v=>v[0]>0&&v[1]>=0,
-      calc:v=>{const pct=r2(v[1]/v[0]*100);const price=r2((20-pct+17)/100);return{pct,money:r2(price*v[0])}}},
+      calc:v=>{const pct=r2(v[1]/v[0]*100);const price=Math.min(r2((20-pct+17)/100),0.22);return{pct,money:r2(price*v[0])}}},
     tryb:{name:"Trybowanie",short:"Trybow.",keys:["noga","kosci"],labels:["Noga trybowana","Kosci"],ph:["120","10"],
       ok:v=>v[0]>=0&&v[1]>=0&&(v[0]>0||v[1]>0),
       calc:v=>({pct:null,money:r2(v[0]*0.5)})},
